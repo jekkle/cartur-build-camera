@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Merges ServerSync into the output assembly and internalizes it, so the mod ships as one
+  DLL with no "ServerSync, Version=1.0.0.0" identity loose in the BepInEx load path where it
+  could win over, or lose to, another mod's copy. Upstream did the same.
+
+  This file's existence is the point, not just its contents. ILRepack.Lib.MSBuild.Task
+  imports $(ProjectDir)ILRepack.targets and runs its own default merge target only when this
+  file is absent. That default merges $(OutputPath)*.dll - every DLL in bin, which here means
+  AsmResolver and the publicizer task as well - so it has to be replaced, not merged with.
+
+  Input is @(IntermediateAssembly) (the compiler's output in obj\), never $(TargetPath):
+  ILRepack writes its result over $(TargetPath), so feeding that back in makes a second build
+  merge ServerSync into an assembly that already has it and fail with "Duplicate type
+  ServerSync.OwnConfigEntryBase". obj\ is rewritten by csc and never merged, so this is
+  idempotent and a rebuild needs no clean.
+-->
+<Project>
+  <Target Name="ILRepacker" AfterTargets="Build">
+    <ItemGroup>
+      <InputAssemblies Include="@(IntermediateAssembly)" />
+      <InputAssemblies Include="$(MSBuildProjectDirectory)\Libs\ServerSync.dll" />
+      <!--
+        ILRepack re-resolves every assembly the inputs reference, and all references here are
+        Private=false so none of them sit next to the output. Feed it the directory of each
+        resolved reference rather than hardcoding NuGet and BepInEx paths, which differ per
+        machine and per HarmonyX version.
+      -->
+      <ILRepackLibDir Include="@(ReferencePath->'%(RootDir)%(Directory)'->Distinct())" />
+    </ItemGroup>
+    <ILRepack Parallel="true" DebugInfo="false" Internalize="true" InputAssemblies="@(InputAssemblies)"
+              OutputFile="$(TargetPath)" TargetKind="SameAsPrimaryAssembly"
+              LibraryPath="@(ILRepackLibDir)" />
+  </Target>
+</Project>

@@ -107,23 +107,7 @@
     </Reference>
   </ItemGroup>
 
-  <!-- Merge ServerSync into the output assembly and internalize it. Must run before the deploy. -->
-  <Target Name="ILRepacker" AfterTargets="Build">
-    <ItemGroup>
-      <InputAssemblies Include="$(TargetPath)" />
-      <InputAssemblies Include="$(MSBuildProjectDirectory)\Libs\ServerSync.dll" />
-      <!--
-        ILRepack has to re-resolve every assembly the inputs reference, and references are all
-        Private=false so none of them sit next to the output. Feed it the directory of each
-        resolved reference instead of hardcoding NuGet and BepInEx paths, which differ per
-        machine and per HarmonyX version.
-      -->
-      <ILRepackLibDir Include="@(ReferencePath->'%(RootDir)%(Directory)'->Distinct())" />
-    </ItemGroup>
-    <ILRepack Parallel="true" DebugInfo="false" Internalize="true" InputAssemblies="@(InputAssemblies)"
-              OutputFile="$(TargetPath)" TargetKind="SameAsPrimaryAssembly"
-              LibraryPath="@(ILRepackLibDir)" />
-  </Target>
+  <!-- The ILRepack merge lives in ILRepack.targets - see the comment there for why. -->
 
   <!-- Auto-deploy the single merged DLL into the r2modman profile BepInEx actually loads -->
   <Target Name="DeployToPlugins" AfterTargets="ILRepacker">
