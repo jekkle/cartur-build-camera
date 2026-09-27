@@ -1,0 +1,9 @@
+{
+  "name": "Carturs_Build_Camera",
+  "version_number": "1.0.0",
+  "website_url": "https://github.com/jekkle/cartur-build-camera",
+  "description": "Detach the camera and build without climbing on things. Works with any hammer, the hoe and the cultivator. Maintained fork of Azumatt's deprecated Build Camera CHE, fixed for Valheim 1.0.",
+  "dependencies": [
+    "denikson-BepInExPack_Valheim-5.4.2333"
+  ]
+}

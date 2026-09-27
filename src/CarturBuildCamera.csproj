@@ -1,0 +1,134 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!--
+      net48, not the usual net472: the prebuilt ServerSync.dll this mod keeps for config sync
+      and the version handshake is itself compiled against net48, and a net472 target refuses to
+      reference it. Upstream targets v4.8 for the same reason. Safe here - 19 of the mods in the
+      working r2modman profile already target net48 and three target net481.
+    -->
+    <TargetFramework>net48</TargetFramework>
+    <AssemblyName>CarturBuildCamera</AssemblyName>
+    <Version>1.0.0</Version>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <!-- Upstream carried these in Properties/AssemblyInfo.cs, which an SDK-style project generates -->
+    <Product>Cartur's Build Camera</Product>
+    <Description>Detached build camera for Valheim. Fork of Azumatt's Build Camera Custom Hammers Edition.</Description>
+    <Company>Cartur</Company>
+    <Copyright>GPL-3.0. Portions copyright Azumatt and gittywithexcitement.</Copyright>
+    <RestoreAdditionalProjectSources>https://nuget.bepinex.dev/v3/index.json</RestoreAdditionalProjectSources>
+    <!-- Managed DLLs come from the raw Steam install -->
+    <VALHEIM_INSTALL Condition="'$(VALHEIM_INSTALL)' == ''">C:\Program Files (x86)\Steam\steamapps\common\Valheim</VALHEIM_INSTALL>
+    <!-- Actual play happens through r2modman's Default profile - deploy the built DLL there -->
+    <R2MODMAN_PROFILE Condition="'$(R2MODMAN_PROFILE)' == ''">$(APPDATA)\r2modmanPlus-local\Valheim\profiles\Default</R2MODMAN_PROFILE>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="BepInEx.Analyzers" Version="1.0.8" PrivateAssets="all" />
+    <PackageReference Include="BepInEx.Core" Version="5.4.21" />
+    <PackageReference Include="HarmonyX" Version="2.10.1" />
+    <!--
+      The publicizer is load-bearing, do not remove it. Twelve members this mod reads are not
+      public in the raw Steam assemblies (checked with Mono.Cecil against Valheim 1.0.16):
+        protected  Humanoid.m_visEquipment / m_helmetItem / m_rightItem
+        private    VisEquipment.m_helmetItemInstance
+        private    SE_Demister.m_ballInstance / m_ballVel / m_coverRayMask
+        private    Player.m_autoPickupMask / m_enableAutoPickup
+        private    Character.takeInputDelay, Character.TakeInput()
+        private    ItemDrop.m_nview
+        private    ZRpc.m_socket
+        private    Localization.AddWord(string, string)
+      Upstream solved this with a pre-publicized copy of the assemblies on disk. This machine
+      has no valheim_Data/Managed/publicized_assemblies, so we publicize at build time instead.
+    -->
+    <PackageReference Include="BepInEx.AssemblyPublicizer.MSBuild" Version="0.4.2" PrivateAssets="all" />
+    <!--
+      ServerSync gets merged into our own DLL and internalized, which is what upstream did and
+      what every other ServerSync consumer does. Shipping it as a loose ServerSync.dll instead
+      would publish an assembly identity of "ServerSync, Version=1.0.0.0" into the BepInEx load
+      path, where it can win over - or lose to - another mod's copy. Internalizing means the
+      types become ours and nothing outside this DLL can see or collide with them.
+    -->
+    <PackageReference Include="ILRepack.Lib.MSBuild.Task" Version="2.0.40" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="assembly_valheim" Publicize="true">
+      <HintPath>$(VALHEIM_INSTALL)\valheim_Data\Managed\assembly_valheim.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <!-- ZInput lives here, not in assembly_valheim -->
+    <Reference Include="assembly_utils" Publicize="true">
+      <HintPath>$(VALHEIM_INSTALL)\valheim_Data\Managed\assembly_utils.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="assembly_guiutils" Publicize="true">
+      <HintPath>$(VALHEIM_INSTALL)\valheim_Data\Managed\assembly_guiutils.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Unity.TextMeshPro">
+      <HintPath>$(VALHEIM_INSTALL)\valheim_Data\Managed\Unity.TextMeshPro.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine">
+      <HintPath>$(VALHEIM_INSTALL)\valheim_Data\Managed\UnityEngine.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.CoreModule">
+      <HintPath>$(VALHEIM_INSTALL)\valheim_Data\Managed\UnityEngine.CoreModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.PhysicsModule">
+      <HintPath>$(VALHEIM_INSTALL)\valheim_Data\Managed\UnityEngine.PhysicsModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.UI">
+      <HintPath>$(VALHEIM_INSTALL)\valheim_Data\Managed\UnityEngine.UI.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <!-- CanvasRenderer forwards here, not to UnityEngine.CoreModule -->
+    <Reference Include="UnityEngine.UIModule">
+      <HintPath>$(VALHEIM_INSTALL)\valheim_Data\Managed\UnityEngine.UIModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.ParticleSystemModule">
+      <HintPath>$(VALHEIM_INSTALL)\valheim_Data\Managed\UnityEngine.ParticleSystemModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <!-- Input.GetAxis("Mouse X") - the look axes are read through legacy Input, not ZInput -->
+    <Reference Include="UnityEngine.InputLegacyModule">
+      <HintPath>$(VALHEIM_INSTALL)\valheim_Data\Managed\UnityEngine.InputLegacyModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="ServerSync">
+      <HintPath>Libs\ServerSync.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <!-- Merge ServerSync into the output assembly and internalize it. Must run before the deploy. -->
+  <Target Name="ILRepacker" AfterTargets="Build">
+    <ItemGroup>
+      <InputAssemblies Include="$(TargetPath)" />
+      <InputAssemblies Include="$(MSBuildProjectDirectory)\Libs\ServerSync.dll" />
+      <!--
+        ILRepack has to re-resolve every assembly the inputs reference, and references are all
+        Private=false so none of them sit next to the output. Feed it the directory of each
+        resolved reference instead of hardcoding NuGet and BepInEx paths, which differ per
+        machine and per HarmonyX version.
+      -->
+      <ILRepackLibDir Include="@(ReferencePath->'%(RootDir)%(Directory)'->Distinct())" />
+    </ItemGroup>
+    <ILRepack Parallel="true" DebugInfo="false" Internalize="true" InputAssemblies="@(InputAssemblies)"
+              OutputFile="$(TargetPath)" TargetKind="SameAsPrimaryAssembly"
+              LibraryPath="@(ILRepackLibDir)" />
+  </Target>
+
+  <!-- Auto-deploy the single merged DLL into the r2modman profile BepInEx actually loads -->
+  <Target Name="DeployToPlugins" AfterTargets="ILRepacker">
+    <MakeDir Directories="$(R2MODMAN_PROFILE)\BepInEx\plugins\CarturBuildCamera" />
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(R2MODMAN_PROFILE)\BepInEx\plugins\CarturBuildCamera" />
+  </Target>
+
+</Project>
