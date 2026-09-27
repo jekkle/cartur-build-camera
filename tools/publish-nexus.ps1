@@ -33,7 +33,7 @@ param(
     [string]$Game = "valheim",
 
     # The mod id from the site URL: nexusmods.com/valheim/mods/3681
-    [string]$ModId = "3685",
+    [string]$ModId = "4055",
 
     # Which of the mod's files this is a new version of. Matched on name.
     [string]$FileName = "Cartur's Build Camera"

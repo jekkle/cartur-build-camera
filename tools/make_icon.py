@@ -8,6 +8,9 @@ with a hammer inside them for what the camera is for.
 Kept to two shapes and three colours because the thing is read at about 32px in a mod list,
 where anything finer turns to mush.
 
+`scene()` is the drawing on its own, so make_banner.py can place the same picture at other
+sizes instead of keeping a second copy of it.
+
     python tools/make_icon.py
 """
 import os
@@ -27,28 +30,26 @@ HEAD = (158, 162, 168, 255)
 HEAD_EDGE = (44, 46, 50, 255)
 
 
-def brackets(draw, inset, arm, weight):
+def _brackets(draw, side, inset, arm, weight):
     """Four corner brackets, like a camera viewfinder's framing marks."""
-    lo, hi = inset, SIZE * SCALE - inset
+    lo, hi = inset, side - inset
     for x, y, dx, dy in ((lo, lo, 1, 1), (hi, lo, -1, 1), (lo, hi, 1, -1), (hi, hi, -1, -1)):
         draw.line([(x, y), (x + dx * arm, y)], fill=BRACKET, width=weight)
         draw.line([(x, y), (x, y + dy * arm)], fill=BRACKET, width=weight)
 
 
-def hammer(draw, cx, cy):
+def _hammer(draw, cx, cy, unit):
     """A builder's hammer, canted so it reads as a tool and not a cross."""
-    # Handle: a rotated rectangle, drawn as a polygon so it can lean.
-    half_w, half_l = 11 * SCALE, 68 * SCALE
+    half_w, half_l = 11 * unit, 68 * unit
     lean = 0.34  # x drift per unit of length
-    pts = []
-    for sx, sy in ((-1, -1), (1, -1), (1, 1), (-1, 1)):
-        pts.append((cx + sx * half_w + sy * half_l * lean, cy + sy * half_l))
-    draw.polygon(pts, fill=HANDLE)
+    draw.polygon(
+        [(cx + sx * half_w + sy * half_l * lean, cy + sy * half_l)
+         for sx, sy in ((-1, -1), (1, -1), (1, 1), (-1, 1))],
+        fill=HANDLE,
+    )
 
-    # Head: a blocky claw hammer across the top of the handle.
-    top_x = cx - half_l * lean
-    top_y = cy - half_l
-    hw, hh = 46 * SCALE, 21 * SCALE
+    top_x, top_y = cx - half_l * lean, cy - half_l
+    hw, hh = 46 * unit, 21 * unit
     draw.polygon(
         [
             (top_x - hw, top_y - hh),
@@ -60,14 +61,20 @@ def hammer(draw, cx, cy):
         ],
         fill=HEAD,
         outline=HEAD_EDGE,
-        width=3 * SCALE,
+        width=max(1, int(3 * unit)),
     )
 
 
-image = Image.new("RGBA", (SIZE * SCALE, SIZE * SCALE), BACKGROUND)
-draw = ImageDraw.Draw(image)
-brackets(draw, inset=26 * SCALE, arm=52 * SCALE, weight=11 * SCALE)
-hammer(draw, cx=SIZE * SCALE // 2 + 6 * SCALE, cy=SIZE * SCALE // 2 + 12 * SCALE)
+def scene(side, background=BACKGROUND):
+    """The icon drawing at any square size. Supersampled, then downsampled once."""
+    unit = side * SCALE / SIZE
+    image = Image.new("RGBA", (side * SCALE, side * SCALE), background)
+    draw = ImageDraw.Draw(image)
+    _brackets(draw, side * SCALE, inset=int(26 * unit), arm=int(52 * unit), weight=int(11 * unit))
+    _hammer(draw, side * SCALE / 2 + 6 * unit, side * SCALE / 2 + 12 * unit, unit)
+    return image.resize((side, side), Image.LANCZOS)
 
-image.resize((SIZE, SIZE), Image.LANCZOS).save(OUT)
-print("wrote", OUT)
+
+if __name__ == "__main__":
+    scene(SIZE).save(OUT)
+    print("wrote", OUT)
