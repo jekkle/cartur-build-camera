@@ -1,0 +1,53 @@
+[size=5]Cartur's Build Camera[/size]
+
+Equip a hammer near a workbench, press [b]Shift+B[/b], and the camera detaches from your character. Look around and move as usual, build and pick pieces as usual, and put it away with Shift+B again, R, or by unequipping the tool. Works with the hoe, the cultivator, and any modded build tool.
+
+[size=4]Why this exists[/size]
+
+Azumatt's [i]Build Camera Custom Hammers Edition[/i] is deprecated, and the version still on Thunderstore - 1.3.1 - is broken on Valheim 1.0.
+
+Valheim 1.0 dropped the trailing optional bool from [i]ZInput.GetJoyLeftStickX/Y[/i] and [i]GetJoyRightStickX/Y[/i]. C# bakes the resolved argument count into the call site, so that build still references four signatures that no longer exist and throws every frame a controller is read. This fork is that code ported from upstream 1.3.3, recompiled against 1.0.16, and maintained.
+
+[size=4]What it does[/size]
+
+[list]
+[*]Detached build camera for any tool with a piece table - vanilla and modded hammers, hoe, cultivator
+[*]Its own configurable station range. It does [b]not[/b] widen workbench coverage or player-base protection, so it will not suppress raids
+[*]The camera cannot cross terrain. HearthBelow cave floors, walls and ceilings use the same collision path
+[*]Optional cozy and minimum-comfort requirement, on camera entry or on camera pickup
+[*]Pick up items off the ground through the camera, with a configurable HUD warning when the cozy rule blocks it. Respects wards, and WardIsLove when installed
+[*]An equipped Dvergr circlet's light follows the camera - CircletExtended and RaziCirclet slots too. Position, intensity, range, colour and shadows configurable
+[*]A Wisplight's demister ball follows the camera, 2.5x clearing range by default
+[*]Separate mouse and controller look inversion; optional world-relative panning
+[*]ServerSync: configs sync from the server
+[/list]
+
+[size=4]Changed in this fork[/size]
+
+[list]
+[*]Recompiled for Valheim 1.0.16 - the controller fix above
+[*]Default key is Shift+B, not bare B, which collided with common quick-slot binds
+[*]Exits build mode on death, and on a portal hop
+[*]Refuses to start while the game's own freefly camera is active
+[*]Auto-pickup falls back to the vanilla ward check when WardIsLove cannot be resolved
+[*]Version handshake uses a minimum-version floor instead of demanding an exact match
+[*]Hotbar keys in build camera read the same input vanilla does
+[/list]
+
+[size=4]Incompatible with[/size]
+
+ValheimPlus first person mode, and Masa's FirstPerson - both take over the camera. Do not run Azumatt's Build Camera at the same time; this one stands down if it sees it.
+
+[size=4]Credits[/size]
+
+GPL-3.0, same as both upstreams. Source: [url=https://github.com/jekkle/cartur-build-camera]github.com/jekkle/cartur-build-camera[/url]
+[list]
+[*][b]gittywithexcitement[/b] and CookieMilk - the original Valheim Build Camera
+[*][b]MSchmoecker[/b] - automatic tool detection
+[*][b]Azumatt[/b] - the Custom Hammers Edition fork this is built from
+[*][b]amberbeanzz[/b] - the Wisplight idea
+[/list]
+
+[size=4]More from Cartur: [/size][url=https://www.nexusmods.com/valheim/mods/3679]HD Blood[/url], [url=https://www.nexusmods.com/valheim/mods/3681]Map Pins[/url], [url=https://www.nexusmods.com/valheim/mods/3684]Compass and Clock[/url], [url=https://www.nexusmods.com/valheim/mods/3685]Safe Stamina[/url], [url=https://www.nexusmods.com/valheim/mods/3728]Follow Command[/url], [url=https://www.nexusmods.com/valheim/mods/3760]Flooring[/url], [url=https://www.nexusmods.com/valheim/mods/3779]UI - HUD[/url], [url=https://www.nexusmods.com/valheim/mods/3888]Waste Management[/url], [url=https://www.nexusmods.com/valheim/mods/4010]Feeding Trough[/url]
+
+[size=4]Support: [/size][url=https://discord.gg/nd5RqpwNkz]Cartur's Mods Discord[/url]
